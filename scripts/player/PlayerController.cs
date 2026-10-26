@@ -150,10 +150,7 @@ public partial class PlayerController : CharacterBody3D
             else
                 TryEnterSeat();
         }
-        else if (@event.IsActionPressed("toggle_mouse"))
-        {
-            Input.MouseMode = captured ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
-        }
+        // Esc artık menüyü açıyor (PauseMenu); oyun ekranına tıklamak fareyi tekrar kilitler
         else if (@event is InputEventMouseButton { Pressed: true } && !captured)
         {
             Input.MouseMode = Input.MouseModeEnum.Captured;

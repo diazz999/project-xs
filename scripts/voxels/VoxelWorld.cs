@@ -134,6 +134,28 @@ public partial class VoxelWorld : Node3D
     public static bool IsVoxelBody(GodotObject collider)
         => collider is StaticBody3D body && body.HasMeta("voxel");
 
+    /// <summary>Dünyanın şu anki üretim değerleri (kaydetmek için).</summary>
+    public WorldParams CurrentParams => _params;
+
+    /// <summary>Üretilmiş dünyaya göre değişen bütün bloklar: her biri için x, y, z, tür.</summary>
+    public int[] ExportEdits()
+    {
+        var edits = new List<(Vector3I, BlockType)>(_modifications.Count);
+        foreach (var (index, type) in _modifications)
+            edits.Add((BlockFromIndex(index), (BlockType)type));
+        return Pack(edits);
+    }
+
+    /// <summary>Sunucuda dünyayı kayıttan kurar ve bütün oyunculara aynısını kurmalarını söyler.</summary>
+    public void ServerLoad(WorldParams parameters, int[] edits)
+    {
+        if (!Multiplayer.IsServer()) return;
+
+        Generate(parameters);
+        ClientApplyEdits(edits ?? Array.Empty<int>());
+        Rpc(MethodName.ClientSyncWorld, parameters.Ints, parameters.Floats, edits ?? Array.Empty<int>());
+    }
+
     // --- Değişiklik istekleri ---
 
     public void RequestSetBlock(Vector3I block, BlockType type)

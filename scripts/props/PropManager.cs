@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 using ProjectXs.Core;
+using ProjectXs.Save;
 using ProjectXs.Vehicles;
 
 namespace ProjectXs.Props;
@@ -387,6 +388,95 @@ public partial class PropManager : Node3D
     }
 
     /// <summary>Oturum bitince bütün objeleri yerelde temizler.</summary>
+    // --- Kaydetme ve yükleme ---
+
+    /// <summary>Bütün objelerin ve bağlantıların şu anki halini kayıt için çıkarır.</summary>
+    public (List<PropSave> Props, List<ConstraintSave> Constraints) ExportState()
+    {
+        var props = new List<PropSave>();
+        foreach (var prop in AllProps())
+        {
+            props.Add(new PropSave
+            {
+                Id = prop.Name,
+                Type = prop.TypeId,
+                Position = SaveConvert.From(prop.GlobalPosition),
+                Rotation = SaveConvert.From(prop.GlobalBasis.Orthonormalized().GetRotationQuaternion()),
+                Frozen = prop.NetFrozen,
+            });
+        }
+
+        var constraints = new List<ConstraintSave>();
+        foreach (Node node in _constraints.GetChildren())
+        {
+            if (node is not Joint3D joint || joint.IsQueuedForDeletion()) continue;
+
+            var a = GetProp(joint.GetMeta("a", "").AsString());
+            if (a == null) continue;
+
+            string b = joint.GetMeta("b", "").AsString();
+            if (!string.IsNullOrEmpty(b) && GetProp(b) == null) continue;
+
+            // Eski sürümde oluşturulmuş eklemlerde göreceli konum yok; o zaman eklemin kendi konumunu kullanıyoruz
+            Transform3D world = joint.HasMeta("localA")
+                ? a.GlobalTransform * joint.GetMeta("localA").AsTransform3D()
+                : joint.GlobalTransform;
+
+            string fallbackKind = joint.Name.ToString().Split('_')[0];
+            constraints.Add(new ConstraintSave
+            {
+                Kind = joint.GetMeta("kind", fallbackKind).AsString(),
+                A = a.Name,
+                B = b,
+                Transform = SaveConvert.From(world),
+                Motor = joint.GetMeta("motor", false).AsBool(),
+            });
+        }
+
+        return (props, constraints);
+    }
+
+    /// <summary>Sunucuda bütün objeleri silip kayıttakileri yeniden kurar; spawner herkese kopyalar.</summary>
+    public void ServerRestore(List<PropSave> props, List<ConstraintSave> constraints)
+    {
+        if (!Multiplayer.IsServer()) return;
+
+        // Koltuktaki oyuncular koltukları silinince kendiliğinden iner
+        foreach (Node child in _constraints.GetChildren())
+            child.QueueFree();
+        foreach (Node child in _container.GetChildren())
+            child.QueueFree();
+        _history.Clear();
+        _driveInputs.Clear();
+
+        // Kayıttaki adlar ile yeni oluşan objeler arasındaki eşleme (yeni objeler yeni adlar alır)
+        var restored = new Dictionary<string, Prop>();
+        foreach (var save in props ?? new List<PropSave>())
+        {
+            var prop = SpawnProp(save.Type, SaveConvert.ToVector3(save.Position), SaveConvert.ToQuaternion(save.Rotation), 0);
+            if (prop == null) continue;
+
+            if (save.Frozen)
+            {
+                prop.NetFrozen = true;
+                prop.Freeze = true;
+            }
+            restored[save.Id] = prop;
+        }
+
+        foreach (var save in constraints ?? new List<ConstraintSave>())
+        {
+            if (!restored.TryGetValue(save.A, out var a)) continue;
+
+            Prop b = null;
+            if (!string.IsNullOrEmpty(save.B) && !restored.TryGetValue(save.B, out b)) continue;
+
+            Joint3D joint = save.Kind == "Weld" ? new Generic6DofJoint3D() : new HingeJoint3D();
+            AddConstraint(joint, save.Kind, SaveConvert.ToTransform(save.Transform), a, b,
+                recordHistory: false, motor: save.Motor);
+        }
+    }
+
     public void ClearAll()
     {
         foreach (Node child in _constraints.GetChildren())
@@ -399,6 +489,8 @@ public partial class PropManager : Node3D
 
     private Prop SpawnProp(string typeId, Vector3 position, Quaternion rotation, long ownerPeerId)
     {
+        if (!PropCatalog.TryGet(typeId, out _)) return null;
+
         var data = new Godot.Collections.Array { typeId, position, rotation, ownerPeerId, _nextId++ };
         return _spawner.Spawn(data) as Prop;
     }
@@ -441,6 +533,10 @@ public partial class PropManager : Node3D
         joint.SetMeta("a", a.Name.ToString());
         joint.SetMeta("b", b != null ? b.Name.ToString() : "");
         joint.SetMeta("motor", motor);
+        joint.SetMeta("kind", kind);
+        // Eklem node'u gövdelerle birlikte hareket etmez; kaydederken doğru yeri bulabilmek için
+        // eklemin A gövdesine göre konumunu saklıyoruz
+        joint.SetMeta("localA", a.GlobalTransform.AffineInverse() * transform);
 
         // Önce sahneye ekleyip konumlandırıyoruz, sonra gövdeleri bağlıyoruz;
         // eklem, gövdeler atandığı andaki konumuna göre kurulur.

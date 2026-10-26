@@ -131,7 +131,7 @@ public partial class ToolBelt : Node
         _helpLabel.Text =
             $"{string.Join("   ", slots)}\n" +
             $"{ActiveTool.Title}: {ActiveTool.HelpText}\n" +
-            "Q (basılı): obje menüsü   Z: geri al   F: koltuğa bin   Esc: fareyi bırak";
+            "Q (basılı): obje menüsü   Z: geri al   F: koltuğa bin   Esc: menü";
     }
 
     public void Select(int index)

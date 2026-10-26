@@ -20,6 +20,7 @@ public partial class Main : Node3D
     private PropManager _props;
     private CombatManager _combat;
     private ConnectMenu _menu;
+    private PauseMenu _pause;
 
     public override void _Ready()
     {
@@ -44,6 +45,10 @@ public partial class Main : Node3D
         _menu = new ConnectMenu { Name = "Menu" };
         AddChild(_menu);
 
+        _pause = new PauseMenu { Name = "Pause" };
+        AddChild(_pause);
+        _pause.LeaveRequested += LeaveSession;
+
         _menu.HostRequested += port => _network.Host(port);
         _menu.JoinRequested += (address, port) => _network.Join(address, port);
 
@@ -55,14 +60,24 @@ public partial class Main : Node3D
     private void OnSessionStarted()
     {
         _menu.Visible = false;
+        _pause.SessionActive = true;
 
         // Objeleri sadece sunucu oluşturur; istemciler onları spawner üzerinden otomatik alır.
         if (Multiplayer.IsServer())
             _props.SpawnStarterProps();
     }
 
+    private void LeaveSession()
+    {
+        _network.Leave();
+        _menu.SetStatus("Oyundan çıktın.");
+        OnSessionEnded();
+    }
+
     private void OnSessionEnded()
     {
+        _pause.SessionActive = false;
+        _pause.Close();
         _props.ClearAll();
         _combat.ClearAll();
         _voxels.ResetWorld();

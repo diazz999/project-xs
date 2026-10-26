@@ -1,6 +1,7 @@
 using Godot;
 using ProjectXs.Player;
 using ProjectXs.Props;
+using ProjectXs.UI;
 
 namespace ProjectXs.Tools;
 
@@ -66,7 +67,8 @@ public partial class PropSpawnTool : Node
     private void CloseMenu()
     {
         _menu.Visible = false;
-        Input.MouseMode = Input.MouseModeEnum.Captured;
+        if (!PauseMenu.IsOpen)
+            Input.MouseMode = Input.MouseModeEnum.Captured;
     }
 
     private void BuildMenu(CanvasLayer hud)
