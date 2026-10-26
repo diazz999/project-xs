@@ -19,6 +19,9 @@ public partial class NetworkManager : Node
     private Node3D _players;
     private MultiplayerSpawner _spawner;
 
+    /// <summary>Oyuncu node'larının bulunduğu yer; her oyuncunun adı peer id'sidir.</summary>
+    public Node3D PlayersRoot => _players;
+
     public override void _Ready()
     {
         _players = new Node3D { Name = "Players" };

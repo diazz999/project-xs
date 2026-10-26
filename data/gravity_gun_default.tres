@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="GravityGunSettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/GravityGunSettings.cs" id="1_gun"]
+
+[resource]
+script = ExtResource("1_gun")

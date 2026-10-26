@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://bvy8a5xwlc7am"]
+
+[ext_resource type="Script" path="res://Node3d.cs" id="1_tyffc"]
+
+[node name="Node3D" type="Node3D" unique_id=1763307652]
+transform = Transform3D(0.7727699, -0.47564209, 0.42022756, 0.58702946, 0.78735673, -0.18832345, -0.24129441, 0.39221668, 0.8876616, 0, 0, 0.15002012)
+script = ExtResource("1_tyffc")

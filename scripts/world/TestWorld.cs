@@ -21,26 +21,25 @@ public static class TestWorld
             ShadowEnabled = true,
         });
 
-        var floorMat = CheckerMaterial(new Color(0.56f, 0.58f, 0.62f), new Color(0.46f, 0.48f, 0.52f));
         var blockMat = CheckerMaterial(new Color(0.90f, 0.58f, 0.32f), new Color(0.78f, 0.47f, 0.25f));
         var wallMat = CheckerMaterial(new Color(0.40f, 0.55f, 0.75f), new Color(0.33f, 0.47f, 0.66f));
 
-        AddBox(root, "Ground", new Vector3(0, -0.5f, 0), new Vector3(120, 1, 120), floorMat);
+        // Zemin artık voxel dünya (VoxelWorld). Doğma noktasının çevresi düz ve yüzeyi y = 0'da,
+        // bu yüzden aşağıdaki test yapıları eskisi gibi yerde duruyor.
 
-        // Rampalar: kayarak hız kazanmayı ve iniş açısını test etmek için
-        AddBox(root, "Ramp", new Vector3(12, 1.6f, -10), new Vector3(5, 0.5f, 10), blockMat, new Vector3(-20, 0, 0));
-        AddBox(root, "SteepRamp", new Vector3(20, 2.4f, -10), new Vector3(5, 0.5f, 10), blockMat, new Vector3(-35, 0, 0));
+        // Rampalar kama şeklinde: alt ucu zeminle aynı hizada başlar, böylece araçlar kenara takılmaz.
+        // Hepsi -Z yönüne (oyuncunun doğduğu yerden ileriye) doğru yükselir; inişler ters yöne bakar.
+        AddWedge(root, "Ramp", new Vector3(12, 0, -12), length: 10, height: 3, width: 6, blockMat, climbsForward: true);
+        AddWedge(root, "Landing", new Vector3(12, 0, -32), length: 12, height: 3, width: 8, blockMat, climbsForward: false);
+        AddWedge(root, "SteepRamp", new Vector3(22, 0, -10), length: 6, height: 3, width: 5, blockMat, climbsForward: true);
+        AddWedge(root, "Kicker", new Vector3(-4, 0, -12), length: 4, height: 0.8f, width: 4, blockMat, climbsForward: true);
 
         // Zıplama blokları: 0.8 m yükseklik, normal zıplamayla çıkılabilir
         for (int i = 0; i < 5; i++)
             AddBox(root, $"Hop{i}", new Vector3(-12, 0.4f + i * 0.5f, -4 - i * 3.5f), new Vector3(2, 0.8f + i, 2), blockMat);
 
-        // Ölçek için büyük bir kule ve duvarlar
+        // Ölçek için büyük bir kule
         AddBox(root, "Tower", new Vector3(0, 4, -25), new Vector3(6, 8, 6), wallMat);
-        AddBox(root, "WallNorth", new Vector3(0, 2, -60), new Vector3(120, 4, 1), wallMat);
-        AddBox(root, "WallSouth", new Vector3(0, 2, 60), new Vector3(120, 4, 1), wallMat);
-        AddBox(root, "WallEast", new Vector3(60, 2, 0), new Vector3(1, 4, 120), wallMat);
-        AddBox(root, "WallWest", new Vector3(-60, 2, 0), new Vector3(1, 4, 120), wallMat);
 
         return root;
     }
@@ -68,6 +67,28 @@ public static class TestWorld
         };
         body.AddChild(new CollisionShape3D { Shape = new BoxShape3D { Size = size } });
         body.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = material });
+        parent.AddChild(body);
+    }
+
+    /// <summary>
+    /// Zemine oturan kama (üçgen prizma) rampa ekler. position, rampanın tabanının ortası.
+    /// climbsForward true ise -Z yönüne doğru yükselir, false ise +Z yönüne doğru.
+    /// </summary>
+    private static void AddWedge(Node3D parent, string name, Vector3 position, float length, float height, float width,
+        Material material, bool climbsForward)
+    {
+        // PrismMesh, LeftToRight = 0 iken dik kenarı -X tarafında olan bir dik üçgen prizma üretir;
+        // yani -X yönüne doğru yükselir. Bunu Y ekseni etrafında döndürerek istenen yöne çeviriyoruz.
+        var mesh = new PrismMesh { LeftToRight = 0.0f, Size = new Vector3(length, height, width) };
+
+        var body = new StaticBody3D
+        {
+            Name = name,
+            Position = position + new Vector3(0, height * 0.5f, 0),
+            RotationDegrees = new Vector3(0, climbsForward ? -90 : 90, 0),
+        };
+        body.AddChild(new CollisionShape3D { Shape = mesh.CreateConvexShape() });
+        body.AddChild(new MeshInstance3D { Mesh = mesh, MaterialOverride = material });
         parent.AddChild(body);
     }
 

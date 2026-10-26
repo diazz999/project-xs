@@ -1,5 +1,6 @@
 using Godot;
 using ProjectXs.Net;
+using ProjectXs.Player;
 
 namespace ProjectXs.UI;
 
@@ -12,6 +13,7 @@ public partial class ConnectMenu : CanvasLayer
     [Signal] public delegate void HostRequestedEventHandler(int port);
     [Signal] public delegate void JoinRequestedEventHandler(string address, int port);
 
+    private LineEdit _nameInput;
     private LineEdit _addressInput;
     private Label _statusLabel;
 
@@ -37,6 +39,13 @@ public partial class ConnectMenu : CanvasLayer
         title.AddThemeFontSizeOverride("font_size", 28);
         box.AddChild(title);
 
+        _nameInput = new LineEdit
+        {
+            PlaceholderText = "Adın",
+            MaxLength = 20,
+        };
+        box.AddChild(_nameInput);
+
         _addressInput = new LineEdit
         {
             Text = "127.0.0.1",
@@ -49,12 +58,17 @@ public partial class ConnectMenu : CanvasLayer
         box.AddChild(buttons);
 
         var hostButton = new Button { Text = "Sunucu kur", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
-        hostButton.Pressed += () => EmitSignal(SignalName.HostRequested, ParseAddress(_addressInput.Text).port);
+        hostButton.Pressed += () =>
+        {
+            ApplyName();
+            EmitSignal(SignalName.HostRequested, ParseAddress(_addressInput.Text).port);
+        };
         buttons.AddChild(hostButton);
 
         var joinButton = new Button { Text = "Katıl", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
         joinButton.Pressed += () =>
         {
+            ApplyName();
             var (host, port) = ParseAddress(_addressInput.Text);
             EmitSignal(SignalName.JoinRequested, host, port);
         };
@@ -74,6 +88,8 @@ public partial class ConnectMenu : CanvasLayer
         if (_statusLabel != null)
             _statusLabel.Text = message;
     }
+
+    private void ApplyName() => PlayerController.LocalName = _nameInput.Text.Trim();
 
     private static (string host, int port) ParseAddress(string text)
     {

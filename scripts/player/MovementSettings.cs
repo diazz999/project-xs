@@ -25,7 +25,8 @@ public partial class MovementSettings : Resource
     [Export] public float AirSpeedCap { get; set; } = 0.6f;
 
     [ExportGroup("Zıplama ve yerçekimi")]
-    [Export] public float JumpVelocity { get; set; } = 5.5f;
+    /// <summary>6 m/s yaklaşık 1.2 metre zıplatır; bir blok yüksekliğine rahatça çıkılır.</summary>
+    [Export] public float JumpVelocity { get; set; } = 6.0f;
     [Export] public float Gravity { get; set; } = 15.0f;
     /// <summary>Açıksa zıplama tuşunu basılı tutmak yere değer değmez tekrar zıplatır (bunny hop).</summary>
     [Export] public bool AutoBunnyHop { get; set; } = true;
